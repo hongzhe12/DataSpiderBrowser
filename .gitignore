@@ -199,3 +199,4 @@ config/secrets.yml
 .azure-pipelines/
 /ui_form.py
 /ai_commit.py
+spider.py
