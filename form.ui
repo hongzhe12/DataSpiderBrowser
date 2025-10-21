@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>531</width>
-    <height>340</height>
+    <width>617</width>
+    <height>428</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,6 +17,13 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="button_flush">
+        <property name="text">
+         <string>刷新</string>
+        </property>
+       </widget>
+      </item>
       <item>
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -40,7 +47,51 @@
      </layout>
     </item>
     <item row="1" column="0">
-     <widget class="QTableWidget" name="tableWidget"/>
+     <widget class="StyledTableWidget" name="tableWidget">
+      <property name="styleSheet">
+       <string notr="true">StyledTableWidget {
+                background-color: #f8f9fa;
+                alternate-background-color: #e9ecef;
+                gridline-color: #dee2e6;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                outline: none;
+            }
+
+            StyledTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #dee2e6;
+            }
+
+            StyledTableWidget::item:selected {
+                background-color: #007bff;
+                color: white;
+            }
+
+            QHeaderView::section {
+                color: white;
+                padding: 8px;
+                border: none;
+                font-weight: bold;
+            }
+
+            QHeaderView::section:first {
+                border-top-left-radius: 7px;
+            }
+
+            QHeaderView::section:last {
+                border-top-right-radius: 7px;
+            }
+
+            QTableCornerButton::section {
+                background-color: #343a40;
+                border-top-left-radius: 7px;
+            }</string>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -49,13 +100,32 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>531</width>
+     <width>617</width>
      <height>33</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>文件</string>
+    </property>
+    <addaction name="action"/>
+   </widget>
+   <addaction name="menu"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="action">
+   <property name="text">
+    <string>导出</string>
+   </property>
+  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>StyledTableWidget</class>
+   <extends>QTableWidget</extends>
+   <header>styledtablewidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
