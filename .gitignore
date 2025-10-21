@@ -197,3 +197,5 @@ config/secrets.yml
 .github/
 .gitlab-ci.yml
 .azure-pipelines/
+/ui_form.py
+/ai_commit.py
