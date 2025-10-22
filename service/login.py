@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QAction
@@ -46,9 +47,7 @@ class LoginWindow(QMainWindow):
         self._init_browser_profile()
         self._init_ui(url)
 
-        # 打印路径信息
-        print("实际存储路径:", self.web_engine_profile.persistentStoragePath())
-        print("缓存路径:", self.web_engine_profile.cachePath())
+
 
         # 初始化 cookies 管理器
         self.cookies_manager = BrowserCookies(self.web_engine_profile.persistentStoragePath())
@@ -56,8 +55,9 @@ class LoginWindow(QMainWindow):
 
     def _init_browser_profile(self):
         """初始化浏览器配置"""
+        BASE_DIR = Path(__file__).resolve().parent.parent
         self.web_engine_profile = QWebEngineProfile("profile", self)
-        profile_dir = os.path.abspath(os.path.join(os.getcwd(), "profile"))
+        profile_dir = os.path.abspath(os.path.join(BASE_DIR, "profile"))
         os.makedirs(profile_dir, exist_ok=True)
         self.web_engine_profile.setPersistentStoragePath(profile_dir)
         self.web_engine_profile.setCachePath(profile_dir)

@@ -1,13 +1,15 @@
 import os.path
 import sys
 from datetime import datetime
-from typing import List
-from login import LoginWindow
-from spider import get_jd_orders
-from storage import cookie
-from ui_form import Ui_MainWindow
+from service.login import LoginWindow
+
+from service.storage import cookie
+from crawlers.spider import JdOrderSpider
+from ui.ui_form import Ui_MainWindow
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
+
+from utils.convert import  dict_list_to_2d_array
 
 
 def load_data_to_table(tableWidget: QTableWidget, data):
@@ -25,37 +27,6 @@ def load_data_to_table(tableWidget: QTableWidget, data):
     # 调整列宽
     tableWidget.resizeColumnsToContents()
 
-
-def jd_orders_to_table_data(orders: List[dict]) -> List[List]:
-    """
-    将京东订单数据转换为表格数据格式
-    """
-    if not orders:
-        return []
-
-    # 定义表头（可以根据需要调整）
-    headers = [
-        "订单号", "订单时间", "商品名称", "数量",
-        "收货人", "地址", "金额", "状态", "支付方式"
-    ]
-
-    data = [headers]  # 第一行是表头
-
-    for order in orders:
-        row = [
-            order.get('order_id', ''),
-            order.get('order_time', ''),
-            order.get('product_name', ''),
-            str(order.get('quantity', 0)),
-            order.get('consignee', ''),
-            order.get('address', ''),
-            f"¥{order.get('amount', 0)}",
-            order.get('status', ''),
-            order.get('payment_method', '')
-        ]
-        data.append(row)
-
-    return data
 
 
 def set_table_headers(tableWidget, headers):
@@ -170,10 +141,20 @@ class MyMainWindow(QMainWindow):
         self.login_window.show()
 
     def button_flush_func(self):
-        # 获取数据
-        data = get_jd_orders(cookie, end_page=1)
+
+        # 创建爬虫实例
+        spider = JdOrderSpider(
+            cookies=cookie,
+            start_page=1,
+            end_page=1  # 可选：只爬前3页；设为 None 则爬到末页
+        )
+
+        # 开始爬取
+        data = spider.crawl()
+
         # 转换数据
-        data = jd_orders_to_table_data(data)
+        data = dict_list_to_2d_array(data, exclude_keys=["order_url", "shop_name"])
+
         # 加载数据到表格
         load_data_to_table(self.ui.tableWidget, data)
 

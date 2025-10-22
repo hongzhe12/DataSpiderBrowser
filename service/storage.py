@@ -1,9 +1,14 @@
 import os
 import sqlite3
+from pathlib import Path
 
-def get_cookies_dict():
+
+def get_cookies_dict()-> dict:
     """从 SQLite 数据库读取 cookies"""
-    cookies_db_path = os.path.join(os.getcwd(),"profile","Cookies")
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    cookies_db_path = os.path.join(BASE_DIR,"profile","Cookies")
+
     cookies = []
     conn = None  # 确保初始化为 None
 
