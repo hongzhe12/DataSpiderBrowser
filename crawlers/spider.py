@@ -1,99 +1,19 @@
 # spider.py
 
 import re
-import time
-from typing import List, Dict, Any
 
-import requests
+from typing import  Dict, Any
+
 from bs4 import BeautifulSoup
 
-from crawlers.base_spider import BaseSpider  # 假设 BaseSpider 在 crawlers/base_spider.py
-from service.storage import cookie
+from crawlers.base_spider import SimpleSpider   # 假设 BaseSpider 在 crawlers/base_spider.py
 
 
-class JdOrderSpider(BaseSpider):
-    """
-    京东订单爬虫
-    功能：登录后爬取用户的订单列表，提取订单信息并保存为表格数据。
-    """
 
-    def get_data(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """过滤掉 None 或空字典 {}"""
-        return data
+def jd_parse_order(response) -> Dict[str, Any]:
+    """从单个订单 tbody 中提取信息（私有方法）"""
 
-    def __init__(self, cookies: Dict[str, str], start_page: int = 1, end_page: int = None):
-        """
-        初始化爬虫。
-
-        Args:
-            cookies (Dict[str, str]): 登录京东后的 Cookie 字典。
-            start_page (int): 起始页码。
-            end_page (int): 结束页码，None 表示爬取到无数据为止。
-        """
-        self.cookies = cookies
-        self.start_page = start_page
-        self.end_page = end_page
-        self.current_page = start_page
-
-        # 京东订单列表 URL
-        self.base_url = "https://order.jd.com/center/list.action"
-
-        # 请求头
-        self.headers = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "cache-control": "no-cache",
-            "pragma": "no-cache",
-            "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-        }
-
-        # 调用父类初始化
-        super().__init__(
-            name="jd_order_spider",
-            start_urls=[f"{self.base_url}?page={start_page}"],
-            delay=1.5  # 避免请求过快
-        )
-
-    def start_requests(self) -> List[str]:
-        """生成起始请求 URL 列表（从 start_page 开始）"""
-        if self.end_page and self.end_page < self.start_page:
-            return []
-        # 我们不在此处生成所有页码，而是在 crawl 过程中动态判断
-        return [f"{self.base_url}?page={self.start_page}"]
-
-    def parse(self, response: requests.Response, **kwargs) -> List[Dict[str, Any]]:
-        """
-        解析京东订单页面 HTML，提取订单信息。
-        此方法直接复用了 spider1.py 中的核心解析逻辑。
-        """
-        try:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            orders = []
-
-            # 查找所有订单的 tbody 元素
-            order_tbodies = soup.find_all('tbody', id=re.compile(r'^tb-'))
-
-            for tbody in order_tbodies:
-                order = self._extract_order_info(tbody)
-                if order:
-                    orders.append(order)
-
-            return orders
-
-        except Exception as e:
-            print(f"解析页面时出错: {e}")
-            return []
-
-    def _extract_order_info(self, tbody) -> Dict[str, Any]:
-        """从单个订单 tbody 中提取信息（私有方法）"""
+    def func(tbody):
         try:
             order = {}
 
@@ -181,67 +101,89 @@ class JdOrderSpider(BaseSpider):
             print(f"解析单个订单时出错: {e}")
             return {}
 
-    def crawl(self):
+    soup = BeautifulSoup(response.text, 'html.parser')
+    orders = []
+
+    # 查找所有订单的 tbody 元素
+    order_tbodies = soup.find_all('tbody', id=re.compile(r'^tb-'))
+
+    for tbody in order_tbodies:
+        order = func(tbody)
+        if order:
+            orders.append(order)
+    return orders
+
+
+
+
+
+class DebugSpider(SimpleSpider):
+    """调试用的爬虫，查看实际返回内容"""
+
+    def parse(self, response):
         """
-        重写 crawl 方法，支持多页爬取。
-        因为京东订单是分页的，我们需要在爬取过程中动态判断是否继续。
+        调试解析方法，查看实际返回内容
         """
-        all_orders = []
-        current_page = self.start_page
+        print(f"\n=== 调试信息 ===")
+        print(f"URL: {response.url}")
+        print(f"状态码: {response.status_code}")
+        print(f"响应头: {dict(response.headers)}")
+        print(f"内容类型: {response.headers.get('Content-Type', 'Unknown')}")
+        print(f"内容长度: {len(response.text)}")
 
-        while True:
-            print(f"\n--- 正在获取第 {current_page} 页订单数据 ---")
+        # 新增cookies检查
+        print(f"当前会话cookies数量: {len(self.session.cookies)}")
+        print(f"关键cookies: {list(self.session.cookies.keys())}")
 
-            # 构造当前页 URL
-            url = self.base_url
-            # 更新 referer
-            headers = self.headers.copy()
-            headers["referer"] = f"{self.base_url}?page={max(1, current_page - 1)}"
-            params = {
-                "page": current_page,
-            }
+        # 查看前500个字符
+        preview = response.text[:500]
+        print(f"内容预览: {preview}")
 
-            response = self.make_request(url, headers=headers, cookies=self.cookies,params = params)
-            if not response:
-                print("请求失败，停止爬取。")
-                break
+        # 检查是否重定向
+        if response.history:
+            print(f"重定向历史: {[r.status_code for r in response.history]}")
+            print(f"最终URL: {response.url}")
 
-            # 解析当前页
-            page_orders = self.parse(response)
-            if not page_orders:
-                print("当前页无订单数据，可能已爬取完毕。")
-                break
+        # 检查是否有错误信息
+        if 'error' in response.text.lower() or 'login' in response.text.lower():
+            print("⚠️  可能包含错误或登录提示")
 
-            all_orders.extend(page_orders)
-            print(f"第 {current_page} 页获取到 {len(page_orders)} 个订单")
-
-            # 检查是否达到结束页
-            if self.end_page and current_page >= self.end_page:
-                print(f"已达到指定结束页 {self.end_page}")
-                break
-
-            current_page += 1
-            time.sleep(self.delay)  # 延迟
-
-        # 保存所有数据
-        if all_orders:
-            print(f"\n🎉 爬取完成！共获取 {len(all_orders)} 个订单。")
-            return all_orders
-
-        else:
-            print("\n❌ 爬取结束，未获取到任何订单数据。")
+        print("=== 调试结束 ===\n")
 
 
-# ------------------- 使用示例 -------------------
+        # 返回空数据，因为我们只是调试
+        return jd_parse_order(response)
 
+    def before_start(self):
+        super().before_start()
+
+        self.session.headers.update({"referer":f"https://order.jd.com/center/list.action?page=1"})
+
+
+
+
+# 使用示例
 if __name__ == "__main__":
+    # 使用调试爬虫
+    debug_spider = DebugSpider()
+    debug_spider.set_headers({
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "cache-control": "no-cache",
+            "pragma": "no-cache",
+            "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+        })
+    params = {
+        "page": 1,
+    }
 
-    # 创建爬虫实例
-    spider = JdOrderSpider(
-        cookies=cookie,
-        start_page=1,
-        end_page=1  # 可选：只爬前3页；设为 None 则爬到末页
-    )
-
-    # 开始爬取
-    spider.crawl()
+    data = debug_spider.crawl('https://order.jd.com/center/list.action', method='POST',params = params)
+    print(data)

@@ -1,153 +1,307 @@
-from abc import ABC, abstractmethod
-import requests
-from typing import List, Dict, Any, Optional
-from urllib.parse import urljoin, urlparse
 import time
+import json
+from abc import ABC, abstractmethod
+from typing import List, Dict, Any, Optional, Union
+from urllib.parse import urljoin
+import requests
+
+from service.storage import cookie
 
 
-class BaseSpider(ABC):
+class SimpleSpider(ABC):
     """
-    爬虫抽象基类，定义了爬虫必须实现的核心方法。
-    子类需要实现具体的请求、解析和数据处理逻辑。
+    简单易用的爬虫基类
+    技术细节完全封装，开发者只需关注解析逻辑
     """
 
-    def __init__(self, name: str, start_urls: List[str], delay: float = 1.0):
+    def __init__(self,
+                 name: str = None,
+                 delay: float = 1.0,
+                 timeout: float = 30.0,
+                 retry_times: int = 3):
         """
-        初始化爬虫。
+        初始化爬虫
 
         Args:
-            name (str): 爬虫名称
-            start_urls (List[str]): 起始 URL 列表
-            delay (float): 请求间隔时间（秒），防止请求过于频繁
+            name: 爬虫名称，默认使用类名
+            delay: 请求延迟，避免过于频繁
+            timeout: 请求超时时间
+            retry_times: 失败重试次数
         """
-        self.name = name
-        self.start_urls = start_urls
+        self.name = name or self.__class__.__name__
         self.delay = delay
+        self.timeout = timeout
+        self.retry_times = retry_times
+
+        # 创建会话
         self.session = requests.Session()
-        # 可在此处设置默认 headers
-        self.session.headers.update({
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "cache-control": "no-cache",
-            "pragma": "no-cache",
-            "priority": "u=0, i",
-            "sec-ch-ua": "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\"",
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": "\"Windows\"",
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "same-origin",  # 修改为same-origin
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
-        })
+        self._setup_session()
 
-    @abstractmethod
-    def start_requests(self) -> List[str]:
+        # 统计信息
+        self.stats = {
+            'total_requests': 0,
+            'success_requests': 0,
+            'failed_requests': 0,
+            'total_data': 0,
+            'start_time': None,
+            'end_time': None
+        }
+        self.set_cookies(cookie)
+
+    def _setup_session(self):
+        """设置默认会话配置"""
+        default_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        self.session.headers.update(default_headers)
+
+    def set_headers(self, headers: Dict[str, str]):
+        """设置请求头"""
+        self.session.headers.update(headers)
+
+    def set_cookies(self, cookies: Dict[str, str]):
+        """设置Cookies"""
+        self.session.cookies.update(cookies)
+
+    def set_proxies(self, proxies: Dict[str, str]):
+        """设置代理"""
+        self.session.proxies.update(proxies)
+
+    def request(self,
+                url: str,
+                method: str = 'GET',
+                params: Dict = None,
+                data: Dict = None,
+                json_data: Dict = None,
+                headers: Dict = None,
+                **kwargs) -> Optional[requests.Response]:
         """
-        必须实现：返回起始请求的 URL 列表。
-        通常直接返回 self.start_urls，也可在此方法中生成动态起始 URL。
+        执行HTTP请求
+
+        Args:
+            url: 请求URL
+            method: 请求方法 GET/POST/PUT/DELETE
+            params: URL查询参数
+            data: 表单数据
+            json_data: JSON数据
+            headers: 请求头
+            **kwargs: 其他requests参数
 
         Returns:
-            List[str]: 起始 URL 列表
+            Response对象或None
+        """
+        # 请求配置
+        request_kwargs = {
+            'timeout': self.timeout,
+            'headers': headers or {},
+        }
+
+        # 添加参数
+        if params:
+            request_kwargs['params'] = params
+        if data:
+            request_kwargs['data'] = data
+        if json_data:
+            request_kwargs['json'] = json_data
+
+        request_kwargs.update(kwargs)
+
+        # 重试机制
+        for attempt in range(self.retry_times):
+            try:
+                self.stats['total_requests'] += 1
+
+                # 请求延迟
+                if self.delay > 0 and self.stats['total_requests'] > 1:
+                    time.sleep(self.delay)
+
+                print(f"[{self.name}] {method} {url}")
+
+                # 执行请求
+                response = self.session.request(
+                    method=method.upper(),
+                    url=url,
+                    **request_kwargs
+                )
+
+                # 检查状态码
+                if response.status_code == 200:
+                    self.stats['success_requests'] += 1
+                    return response
+                else:
+                    print(f"[{self.name}] 请求失败: {response.status_code}")
+
+            except requests.RequestException as e:
+                print(f"[{self.name}] 请求异常 (尝试 {attempt + 1}/{self.retry_times}): {e}")
+
+            except Exception as e:
+                print(f"[{self.name}] 未知错误: {e}")
+                break
+
+        self.stats['failed_requests'] += 1
+        return None
+
+    def get(self, url: str, **kwargs) -> Optional[requests.Response]:
+        """GET请求快捷方法"""
+        return self.request(url, 'GET', **kwargs)
+
+    def post(self, url: str, **kwargs) -> Optional[requests.Response]:
+        """POST请求快捷方法"""
+        return self.request(url, 'POST', **kwargs)
+
+    def download_file(self, url: str, filepath: str, **kwargs) -> bool:
+        """
+        下载文件
+
+        Args:
+            url: 文件URL
+            filepath: 保存路径
+            **kwargs: 请求参数
+
+        Returns:
+            是否下载成功
+        """
+        response = self.get(url, **kwargs)
+        if response and response.status_code == 200:
+            try:
+                with open(filepath, 'wb') as f:
+                    f.write(response.content)
+                print(f"[{self.name}] 文件下载成功: {filepath}")
+                return True
+            except Exception as e:
+                print(f"[{self.name}] 文件保存失败: {e}")
+        return False
+
+    def build_url(self, base_url: str, **path_params) -> str:
+        """
+        构建URL，支持路径参数
+
+        Args:
+            base_url: 基础URL，可包含 {param} 占位符
+            **path_params: 路径参数
+
+        Returns:
+            构建后的URL
+        """
+        if path_params:
+            return base_url.format(**path_params)
+        return base_url
+
+    @abstractmethod
+    def parse(self, response: requests.Response) -> List[Dict[str, Any]]:
+        """
+        解析响应内容 - 必须实现的方法
+
+        Args:
+            response: 响应对象
+
+        Returns:
+            数据列表，每个字典是一条数据记录
         """
         pass
 
-    @abstractmethod
-    def parse(self, response: requests.Response, **kwargs) -> List[Dict[str, Any]]:
+    def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """
-        必须实现：解析响应内容，提取数据和/或新的请求 URL。
-        这是爬虫的核心逻辑，子类需要根据目标网页结构进行实现。
+        处理单条数据 - 可选重写
 
         Args:
-            response (requests.Response): HTTP 响应对象
-            **kwargs: 可传递额外的上下文信息
+            item: 原始数据项
 
         Returns:
-            List[Dict[str, Any]]: 解析得到的数据列表，每个字典代表一条数据记录
+            处理后的数据项
         """
-        pass
+        return item
 
-    @abstractmethod
-    def get_data(self, data: List[Dict[str, Any]]):
+    def save_data(self, data: List[Dict[str, Any]]):
         """
-        必须实现：将提取的数据保存到文件或数据库。
-        具体保存方式（如 CSV、JSON、数据库）由子类决定。
+        保存数据 - 可选重写
 
         Args:
-            data (List[Dict[str, Any]]): 要保存的数据列表
-            filename (str): 保存文件的路径或名称
+            data: 数据列表
         """
-        pass
+        if not data:
+            return
 
-    def make_request(self, url: str, **kwargs) -> Optional[requests.Response]:
-        """
-        执行 HTTP 请求，包含异常处理和请求间隔控制。
-        可被子类重写以支持更复杂的请求逻辑（如使用代理、重试机制）。
-
-        Args:
-            url (str): 请求的 URL
-            **kwargs: 传递给 requests.get() 的额外参数
-
-        Returns:
-            Optional[requests.Response]: 响应对象，请求失败时返回 None
-        """
+        # 默认保存为JSON文件
+        filename = f"{self.name}_{int(time.time())}.json"
         try:
-            print(f"正在请求: {url}")
-            time.sleep(self.delay)  # 遵守爬虫礼仪，添加延迟
-            response = self.session.get(url, **kwargs)
-            response.raise_for_status()  # 检查 HTTP 错误状态
-            return response
-        except requests.RequestException as e:
-            print(f"请求失败: {url}, 错误: {e}")
-            return None
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f"[{self.name}] 数据已保存到: {filename}")
+        except Exception as e:
+            print(f"[{self.name}] 数据保存失败: {e}")
 
-    def is_valid_url(self, url: str, allowed_domains: List[str]) -> bool:
+    def before_start(self):
+        """爬取开始前的准备工作 - 可选重写"""
+        print(f"[{self.name}] 开始爬取...")
+        self.stats['start_time'] = time.time()
+
+    def after_finish(self, data: List[Dict[str, Any]]):
+        """爬取结束后的清理工作 - 可选重写"""
+        self.stats['end_time'] = time.time()
+        self.stats['total_data'] = len(data)
+
+        duration = self.stats['end_time'] - self.stats['start_time']
+        print(f"[{self.name}] 爬取完成!")
+        print(f"[{self.name}] 统计信息:")
+        print(f"  - 总请求数: {self.stats['total_requests']}")
+        print(f"  - 成功请求: {self.stats['success_requests']}")
+        print(f"  - 失败请求: {self.stats['failed_requests']}")
+        print(f"  - 获取数据: {self.stats['total_data']} 条")
+        print(f"  - 耗时: {duration:.2f} 秒")
+
+    def crawl(self, urls: Union[str, List[str]], **request_kwargs) -> List[Dict[str, Any]]:
         """
-        检查 URL 是否属于允许的域名，用于限制爬取范围。
-        可被子类重写以实现更复杂的 URL 过滤逻辑。
+        执行爬取任务
 
         Args:
-            url (str): 待检查的 URL
-            allowed_domains (List[str]): 允许的域名列表
+            urls: 要爬取的URL或URL列表
+            **request_kwargs: 请求参数
 
         Returns:
-            bool: URL 是否有效
+            爬取到的所有数据
         """
-        try:
-            parsed_url = urlparse(url)
-            domain = parsed_url.netloc
-            return any(allowed_domain in domain for allowed_domain in allowed_domains)
-        except Exception:
-            return False
+        # 准备阶段
+        self.before_start()
 
-    def crawl(self):
-        """
-        爬虫的主运行方法，定义了爬取的整体流程。
-        1. 获取起始 URL
-        2. 对每个 URL 发起请求
-        3. 解析响应内容
-        4. 保存数据
-        """
-        urls = self.start_requests()
+        # 统一URL格式
+        if isinstance(urls, str):
+            urls = [urls]
+
         all_data = []
 
+        # 遍历URL进行爬取
         for url in urls:
+            response = self.request(url, **request_kwargs)
 
-            response = self.make_request(url)
             if response:
                 try:
-                    data = self.parse(response)
-                    all_data.extend(data)
-                    print(f"成功解析 {len(data)} 条数据来自 {url}")
-                except Exception as e:
-                    print(f"解析失败 {url}: {e}")
-            else:
-                print(f"跳过无法请求的 URL: {url}")
+                    # 解析数据
+                    items = self.parse(response)
 
-        if all_data:
-            filename = f"{self.name}_data.json"
-            self.get_data(all_data, filename)
-            print(f"爬取完成，共获取 {len(all_data)} 条数据，已保存至 {filename}")
-        else:
-            print("爬取结束，未获取到有效数据。")
+                    # 处理数据
+                    processed_items = []
+                    for item in items:
+                        processed_item = self.process_item(item)
+                        processed_items.append(processed_item)
+
+                    all_data.extend(processed_items)
+                    print(f"[{self.name}] 从 {url} 解析出 {len(processed_items)} 条数据")
+
+                except Exception as e:
+                    print(f"[{self.name}] 解析失败 {url}: {e}")
+            else:
+                print(f"[{self.name}] 请求失败: {url}")
+
+        # 保存数据
+        self.save_data(all_data)
+
+        # 结束阶段
+        self.after_finish(all_data)
+
+        return all_data

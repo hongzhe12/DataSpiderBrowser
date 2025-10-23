@@ -4,12 +4,12 @@ from datetime import datetime
 from service.login import LoginWindow
 
 from service.storage import cookie
-from crawlers.spider import JdOrderSpider
+from crawlers.spider import  DebugSpider
 from ui.ui_form import Ui_MainWindow
 from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 
-from utils.convert import  dict_list_to_2d_array
+from utils.convert import dict_list_to_2d_array
 
 
 def load_data_to_table(tableWidget: QTableWidget, data):
@@ -26,7 +26,6 @@ def load_data_to_table(tableWidget: QTableWidget, data):
 
     # 调整列宽
     tableWidget.resizeColumnsToContents()
-
 
 
 def set_table_headers(tableWidget, headers):
@@ -141,19 +140,30 @@ class MyMainWindow(QMainWindow):
         self.login_window.show()
 
     def button_flush_func(self):
+        debug_spider = DebugSpider()
+        debug_spider.set_headers({
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "cache-control": "no-cache",
+            "pragma": "no-cache",
+            "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+        })
+        params = {
+            "page": 1,
+        }
 
-        # 创建爬虫实例
-        spider = JdOrderSpider(
-            cookies=cookie,
-            start_page=1,
-            end_page=1  # 可选：只爬前3页；设为 None 则爬到末页
-        )
-
-        # 开始爬取
-        data = spider.crawl()
+        data = debug_spider.crawl('https://order.jd.com/center/list.action', method='POST', params=params)
 
         # 转换数据
-        data = dict_list_to_2d_array(data, exclude_keys=["order_url", "shop_name"])
+        data = dict_list_to_2d_array(data, exclude_keys=["order_url", "shop_name", "product_url"])
 
         # 加载数据到表格
         load_data_to_table(self.ui.tableWidget, data)
