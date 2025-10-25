@@ -1,8 +1,9 @@
-name: Build and Package
+name: Build and Release
 
 on:
   push:
-    branches: [ master ]
+    tags:
+      - 'v*'  # 只有打 tag 时触发发布
   pull_request:
     branches: [ master ]
 
@@ -24,7 +25,33 @@ jobs:
         python -m pip install uv
         uv pip install --system -r requirements.txt
 
-    - name: Run package script
+    - name: Build executable
       run: |
         chcp 65001
-        pyinstaller --noconfirm --onefile --windowed --icon "resources/images/京东_128x128.ico" --name "京东订单（个人）"  "app.py"
+        pyinstaller --noconfirm --onefile --windowed --icon "resources/images/京东_128x128.ico" --name "京东订单（个人）" "app.py"
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: executable
+        path: dist/京东订单（个人）.exe
+        retention-days: 1
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: executable
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: 京东订单（个人）.exe
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
