@@ -21,8 +21,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple
-        uv pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+        python -m pip install uv
+        uv pip install --system -r requirements.txt
 
     - name: Run package script
       run: |
