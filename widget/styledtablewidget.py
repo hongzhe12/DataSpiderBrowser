@@ -10,6 +10,71 @@ class StyledTableWidget(QTableWidget):
         self.setup_ui()
         self.setup_table_operations()
 
+        # 添加筛选功能相关属性
+        self.filter_active = False
+        self.filtered_rows = set()
+
+    def apply_filter(self, column, pattern, match_type="contains"):
+        """应用筛选条件
+        Args:
+            column: 要筛选的列索引，-1表示所有列
+            pattern: 筛选模式
+            match_type: 匹配类型 ("contains", "equals", "regex")
+        """
+        if not pattern:
+            return
+
+        self.filter_active = True
+        self.filtered_rows.clear()
+
+        try:
+            import re
+            for row in range(self.rowCount()):
+                show_row = False
+
+                if column == -1:  # 所有列
+                    for col in range(self.columnCount()):
+                        item = self.item(row, col)
+                        if item and self._match_item(item.text(), pattern, match_type):
+                            show_row = True
+                            break
+                else:  # 特定列
+                    item = self.item(row, column)
+                    if item and self._match_item(item.text(), pattern, match_type):
+                        show_row = True
+
+                # 根据匹配结果隐藏或显示行
+                self.setRowHidden(row, not show_row)
+                if not show_row:
+                    self.filtered_rows.add(row)
+
+        except Exception as e:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "筛选错误", f"筛选过程中发生错误: {str(e)}")
+
+    def _match_item(self, text, pattern, match_type):
+        """匹配单个单元格文本"""
+        try:
+            if match_type == "contains":
+                return pattern.lower() in text.lower()
+            elif match_type == "equals":
+                return text.lower() == pattern.lower()
+            elif match_type == "regex":
+                import re
+                return bool(re.search(pattern, text, re.IGNORECASE))
+        except Exception:
+            return False
+        return False
+
+    def clear_filter(self):
+        """清除筛选，显示所有行"""
+        self.filter_active = False
+        self.filtered_rows.clear()
+
+        # 显示所有行
+        for row in range(self.rowCount()):
+            self.setRowHidden(row, False)
+
     def setup_ui(self):
         # 你现有的UI设置代码
         self.setAlternatingRowColors(True)

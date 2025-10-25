@@ -124,31 +124,31 @@ class DebugSpider(SimpleSpider):
         """
         调试解析方法，查看实际返回内容
         """
-        print(f"\n=== 调试信息 ===")
-        print(f"URL: {response.url}")
-        print(f"状态码: {response.status_code}")
-        print(f"响应头: {dict(response.headers)}")
-        print(f"内容类型: {response.headers.get('Content-Type', 'Unknown')}")
-        print(f"内容长度: {len(response.text)}")
-
-        # 新增cookies检查
-        print(f"当前会话cookies数量: {len(self.session.cookies)}")
-        print(f"关键cookies: {list(self.session.cookies.keys())}")
-
-        # 查看前500个字符
-        preview = response.text[:500]
-        print(f"内容预览: {preview}")
-
-        # 检查是否重定向
-        if response.history:
-            print(f"重定向历史: {[r.status_code for r in response.history]}")
-            print(f"最终URL: {response.url}")
-
-        # 检查是否有错误信息
-        if 'error' in response.text.lower() or 'login' in response.text.lower():
-            print("⚠️  可能包含错误或登录提示")
-
-        print("=== 调试结束 ===\n")
+        # print(f"\n=== 调试信息 ===")
+        # print(f"URL: {response.url}")
+        # print(f"状态码: {response.status_code}")
+        # print(f"响应头: {dict(response.headers)}")
+        # print(f"内容类型: {response.headers.get('Content-Type', 'Unknown')}")
+        # print(f"内容长度: {len(response.text)}")
+        #
+        # # 新增cookies检查
+        # print(f"当前会话cookies数量: {len(self.session.cookies)}")
+        # print(f"关键cookies: {list(self.session.cookies.keys())}")
+        #
+        # # 查看前500个字符
+        # preview = response.text[:500]
+        # print(f"内容预览: {preview}")
+        #
+        # # 检查是否重定向
+        # if response.history:
+        #     print(f"重定向历史: {[r.status_code for r in response.history]}")
+        #     print(f"最终URL: {response.url}")
+        #
+        # # 检查是否有错误信息
+        # if 'error' in response.text.lower() or 'login' in response.text.lower():
+        #     print("⚠️  可能包含错误或登录提示")
+        #
+        # print("=== 调试结束 ===\n")
 
 
         # 返回空数据，因为我们只是调试
@@ -159,7 +159,46 @@ class DebugSpider(SimpleSpider):
 
         self.session.headers.update({"referer":f"https://order.jd.com/center/list.action?page=1"})
 
+    def crawl_all_pages(self, base_url, **request_kwargs):
+        """自动爬取所有页面数据"""
+        all_data = []
+        page = 1
+        while True:
+            # 更新参数中的页码
+            params = request_kwargs.get('params', {}).copy()
+            params['page'] = page
+            request_kwargs['params'] = params
 
+            # print(f"正在爬取第 {page} 页...")
+
+
+            response = self.request(base_url, **request_kwargs)
+
+            if response:
+                try:
+                    items = self.parse(response)
+                    if not items:  # 如果当前页没有数据，说明已经到最后一页
+                        print(f"第 {page} 页没有数据，爬取完成")
+                        break
+
+                    processed_items = []
+                    for item in items:
+                        processed_item = self.process_item(item)
+                        processed_items.append(processed_item)
+
+                    all_data.extend(processed_items)
+                    print(f"从第 {page} 页解析出 {len(processed_items)} 条数据")
+
+                    page += 1
+
+                except Exception as e:
+                    print(f"解析第 {page} 页失败: {e}")
+                    break
+            else:
+                print(f"请求第 {page} 页失败，停止爬取")
+                break
+
+        return all_data
 
 
 # 使用示例

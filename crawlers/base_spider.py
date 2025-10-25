@@ -16,7 +16,7 @@ class SimpleSpider(ABC):
 
     def __init__(self,
                  name: str = None,
-                 delay: float = 1.0,
+                 delay: float = 0,
                  timeout: float = 30.0,
                  retry_times: int = 3):
         """

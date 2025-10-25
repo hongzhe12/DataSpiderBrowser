@@ -6,16 +6,99 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>617</width>
-    <height>428</height>
+    <width>773</width>
+    <height>532</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>京东订单（个人）</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QComboBox" name="comboBox">
+        <item>
+         <property name="text">
+          <string>全部订单</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>电脑配件</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>手机数码</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>家用电器</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>服装鞋帽</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>食品饮料</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>美妆个护</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>图书文具</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>运动户外</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>家居日用</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>母婴玩具</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="export_current_page">
+        <property name="text">
+         <string>导出当前页</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="1" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QPushButton" name="button_flush">
@@ -46,47 +129,52 @@
       </item>
      </layout>
     </item>
-    <item row="1" column="0">
+    <item row="2" column="0">
      <widget class="StyledTableWidget" name="tableWidget">
       <property name="styleSheet">
        <string notr="true">StyledTableWidget {
-                background-color: #f8f9fa;
-                alternate-background-color: #e9ecef;
-                gridline-color: #dee2e6;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                outline: none;
-            }
+    background-color: #ffffff;
+    alternate-background-color: #fafafa;
+    gridline-color: #e5e5e5;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    outline: none;
+}
 
-            StyledTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #dee2e6;
-            }
+StyledTableWidget::item {
+    padding: 8px;
+    border-bottom: 1px solid #e5e5e5;
+}
 
-            StyledTableWidget::item:selected {
-                background-color: #007bff;
-                color: white;
-            }
+StyledTableWidget::item:selected {
+    background-color: #006eff;  /* 腾讯蓝 */
+    color: white;
+}
 
-            QHeaderView::section {
-                color: white;
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-            }
+QHeaderView::section {
+    background-color: #f0f0f0;
+    color: #333333;
+    padding: 10px 8px;
+    border: none;
+    border-bottom: 1px dashed #e5e5e5;  /* 改为虚线 */
+    border-right: 1px dashed #e5e5e5;   /* 添加右边框虚线 */
+    font-weight: 500;
+}
 
-            QHeaderView::section:first {
-                border-top-left-radius: 7px;
-            }
 
-            QHeaderView::section:last {
-                border-top-right-radius: 7px;
-            }
+QHeaderView::section:first {
+    border-top-left-radius: 4px;
+}
 
-            QTableCornerButton::section {
-                background-color: #343a40;
-                border-top-left-radius: 7px;
-            }</string>
+QHeaderView::section:last {
+    border-top-right-radius: 4px;
+}
+
+QTableCornerButton::section {
+    background-color: #f0f0f0;
+    border-top-left-radius: 4px;
+}
+</string>
       </property>
       <property name="selectionMode">
        <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
@@ -100,7 +188,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>617</width>
+     <width>773</width>
      <height>33</height>
     </rect>
    </property>
@@ -110,12 +198,24 @@
     </property>
     <addaction name="action"/>
    </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>分享</string>
+    </property>
+    <addaction name="share_action"/>
+   </widget>
    <addaction name="menu"/>
+   <addaction name="menu_2"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action">
    <property name="text">
     <string>导出</string>
+   </property>
+  </action>
+  <action name="share_action">
+   <property name="text">
+    <string>分享订单</string>
    </property>
   </action>
  </widget>
