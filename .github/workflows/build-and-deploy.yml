@@ -2,16 +2,15 @@ name: Build and Release
 
 on:
   push:
+    branches: [ master ]
     tags:
-      - 'v*'  # 只有打 tag 时触发发布
+      - 'v*'
   pull_request:
     branches: [ master ]
 
 jobs:
-  build-and-release:
+  build:
     runs-on: windows-latest
-    permissions:
-      contents: write  # 添加写入权限
 
     steps:
     - name: Checkout code
@@ -33,31 +32,35 @@ jobs:
         chcp 65001
         pyinstaller --noconfirm --onefile --windowed --icon "resources/images/京东_128x128.ico" --name "京东订单（个人）" "app.py"
 
-    - name: Verify build output
-      run: |
-        echo "=== 构建结果验证 ==="
-        echo "当前目录: $(pwd)"
-        echo "dist目录内容:"
-        ls -la dist/
-        echo "可执行文件信息:"
-        [ -f "dist/京东订单（个人）.exe" ] && echo "✅ 可执行文件存在" || echo "❌ 可执行文件缺失"
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: executable
+        path: dist/京东订单（个人）.exe
+        retention-days: 1
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/')  # 只有 tag 时发布
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: executable
 
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/京东订单（个人）.exe
+        files: 京东订单（个人）.exe
         tag_name: ${{ github.ref_name }}
         name: Release ${{ github.ref_name }}
         body: |
           自动构建版本 - ${{ github.sha }}
-          
           下载地址: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/京东订单（个人）.exe
-          
-          构建信息:
-          - 提交: ${{ github.sha }}
-          - 时间: ${{ github.event.head_commit.timestamp }}
-          - 触发者: ${{ github.actor }}
         draft: false
         prerelease: false
       env:
