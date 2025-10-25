@@ -3,14 +3,14 @@ import sys
 from datetime import datetime
 
 from PySide6.QtCore import *
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import *
 
 from crawlers.spider import DebugSpider
 from service.login import LoginWindow
 from ui.ui_form import Ui_MainWindow
 from utils.convert import dict_list_to_2d_array
-
+import resources_rc
 
 def load_data_to_table(tableWidget: QTableWidget, data):
     # 设置表格行列数
@@ -468,7 +468,15 @@ class MyMainWindow(QMainWindow):
 
 
 def main():
+    try:
+        from ctypes import windll
+        myappid = 'mycompany.myproduct.subproduct.version'
+        windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except ImportError:
+        pass
+
     app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("./resources/images/京东.svg"))
     window = MyMainWindow()
     window.show()
     sys.exit(app.exec())

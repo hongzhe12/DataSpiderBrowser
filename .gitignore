@@ -167,7 +167,6 @@ public/dist/
 # ==============================
 # 其他通用
 # ==============================
-.DS_Store
 .svn/
 .hg/
 .fseventsd
@@ -175,7 +174,7 @@ public/dist/
 .Trash-*
 *.stackdump
 *.retry
-.DS_Store
+
 
 # 安全：避免提交敏感文件
 *.pem
@@ -194,7 +193,6 @@ config/secrets.yml
 
 # CI/CD
 .circleci/
-.github/
 .gitlab-ci.yml
 .azure-pipelines/
 /ui/ui_form.py
