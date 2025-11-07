@@ -1,5 +1,5 @@
 <RCC>
   <qresource prefix="/icons">
-    <file>./resources/images/京东.svg</file>
+    <file alias="jd.svg">resources/images/jd.svg</file>
   </qresource>
 </RCC>

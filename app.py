@@ -476,7 +476,7 @@ def main():
         pass
 
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon("./resources/images/京东.svg"))
+    app.setWindowIcon(QIcon(':/icons/jd.svg'))
     window = MyMainWindow()
     window.show()
     sys.exit(app.exec())
