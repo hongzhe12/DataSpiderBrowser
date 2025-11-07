@@ -28,13 +28,14 @@ jobs:
     - name: Install dependencies
       shell: cmd
       run: |
+        python -m pip install --upgrade pip
         pip install pyinstaller
-        if exist requirements.txt pip install -r requirements.txt
+        python -m pip install -r requirements.txt
 
     - name: Build executable
       shell: cmd
       run: |
-        pyinstaller --noconfirm --onefile --windowed --icon "images/京东_128x128.ico" --name "${{ env.APP_NAME }}" "app.py" 
+        pyinstaller --noconfirm --onefile --windowed --icon "resources/images/京东_128x128.ico" --name "${{ env.APP_NAME }}" "app.py" 
         
 
     - name: Upload build artifact
