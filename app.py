@@ -9,6 +9,7 @@ from PySide6.QtWidgets import *
 from crawlers.spider import DebugSpider
 from service.login import LoginWindow
 from ui.ui_form import Ui_MainWindow
+from utils.address import desensitize_address, desensitize_consignee
 from utils.convert import dict_list_to_2d_array
 import resources_rc
 
@@ -359,27 +360,46 @@ class MyMainWindow(QMainWindow):
         self.login_window = LoginWindow("https://order.jd.com/center/list.action")
         self.login_window.show()
 
-
-
     def button_flush_func(self):
         '''
         刷新数据
         '''
-
-
         data = self.crawl_jd_orders()
         # 转换数据
         data = dict_list_to_2d_array(data, exclude_keys=["order_url", "shop_name", "product_url"])
 
+        # 对收货地址和收货人字段进行脱敏处理
+        if data and len(data) > 0:  # 确保有数据
+            # 定义表头
+            header = ['订单编号', '下单时间', '商品名称', '购买数量', '收货人', '收货地址', '联系电话', '实付金额（元）',
+                      '支付方式', '订单状态']
+
+            try:
+                # 找到"收货地址"列的索引
+                address_column_index = header.index('收货地址')
+                # 找到"收货人"列的索引
+                consignee_column_index = header.index('收货人')
+
+                # 对所有数据行进行脱敏处理
+                for i in range(len(data)):  # 处理所有行包括第一行数据
+                    # 脱敏收货地址
+                    if len(data[i]) > address_column_index:
+                        original_address = data[i][address_column_index]
+                        data[i][address_column_index] = desensitize_address(original_address)
+
+                    # 脱敏收货人
+                    if len(data[i]) > consignee_column_index:
+                        original_consignee = data[i][consignee_column_index]
+                        data[i][consignee_column_index] = desensitize_consignee(original_consignee)
+            except ValueError:
+                # 如果找不到列，不进行处理
+                pass
+
         # 加载数据到表格
         load_data_to_table(self.ui.tableWidget, data)
-        header = ['订单编号', '下单时间', '商品名称', '购买数量', '收货人', '收货地址', '联系电话', '实付金额（元）',
-                  '支付方式', '订单状态']
         self.ui.tableWidget.setHorizontalHeaderLabels(header)
 
         self.statusBar().showMessage("京东订单爬取完成", 3000)
-
-
 
     def crawl_jd_orders(self):
         """执行京东订单爬取的实际函数"""
